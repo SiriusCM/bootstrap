@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protobuf WebSocket测试工具 - 增强版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/protobufjs@6.11.3/dist/protobuf.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        danger: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 4px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background-color: rgba(156, 163, 175, 0.5);
+                border-radius: 2px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+<div class="container mx-auto px-4 py-8 max-w-6xl">
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Protobuf WebSocket测试工具</h1>
+        <p class="text-gray-600">增强版 - 解决消息类型识别问题</p>
+    </header>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Protobuf协议设置</h2>
+        <div class="mb-4">
+            <label for="proto-content" class="block text-sm font-medium text-gray-700 mb-1">协议内容</label>
+            <textarea id="proto-content" rows="8" class="w-full p-3 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary resize-none scrollbar-thin" placeholder="请输入Protobuf协议定义内容"></textarea>
+        </div>
+        <button id="parse-btn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
+            <i class="fa fa-refresh mr-1"></i> 解析协议
+        </button>
+        <div class="mt-4 p-3 bg-gray-50 rounded-md text-sm font-mono h-24 overflow-y-auto scrollbar-thin" id="parse-log">
+            解析日志将显示在这里
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">WebSocket连接</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label for="ws-url" class="block text-sm font-medium text-gray-700 mb-1">WebSocket地址</label>
+                <input type="text" id="ws-url" class="w-full p-2 border border-gray-300 rounded-md" placeholder="ws://localhost:8080">
+            </div>
+            <div class="md:col-span-2 flex items-end">
+                <button id="connect-btn" class="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors mr-2">
+                    <i class="fa fa-connectdevelop mr-1"></i> 连接
+                </button>
+                <button id="disconnect-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors mr-2" disabled>
+                    <i class="fa fa-disconnect mr-1"></i> 断开
+                </button>
+                <button id="send-btn" class="bg-secondary text-white px-4 py-2 rounded-md hover:bg-secondary/90 transition-colors" disabled>
+                    <i class="fa fa-paper-plane mr-1"></i> 发送
+                </button>
+            </div>
+        </div>
+        <div class="flex items-center mb-4">
+                <span id="connection-status" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                    <span class="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
+                    未连接
+                </span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">消息设置</h2>
+        <div class="mb-4">
+            <label for="message-type" class="block text-sm font-medium text-gray-700 mb-1">消息类型</label>
+            <select id="message-type" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed" disabled>
+                <option value="">请先解析协议</option>
+            </select>
+        </div>
+        <div class="mb-4">
+            <label for="message-json" class="block text-sm font-medium text-gray-700 mb-1">消息内容(JSON)</label>
+            <textarea id="message-json" rows="4" class="w-full p-3 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary resize-none scrollbar-thin" placeholder="输入消息的JSON格式内容"></textarea>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">消息日志</h2>
+        <div class="p-3 bg-gray-50 rounded-md h-64 overflow-y-auto scrollbar-thin" id="message-log">
+            <div class="text-gray-500 italic">消息将显示在这里</div>
+        </div>
+        <button id="clear-log" class="mt-4 text-gray-500 hover:text-gray-700 text-sm">
+            <i class="fa fa-trash-o mr-1"></i> 清空日志
+        </button>
+    </div>
+</div>
+
+<script>
+    // 全局变量
+    let protoRoot = null;
+    let messageTypes = {};
+    let websocket = null;
+    let isConnected = false;
+
+    // DOM元素
+    const protoContent = document.getElementById('proto-content');
+    const parseBtn = document.getElementById('parse-btn');
+    const parseLog = document.getElementById('parse-log');
+    const messageType = document.getElementById('message-type');
+    const messageJson = document.getElementById('message-json');
+    const wsUrl = document.getElementById('ws-url');
+    const connectBtn = document.getElementById('connect-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    const sendBtn = document.getElementById('send-btn');
+    const connectionStatus = document.getElementById('connection-status');
+    const messageLog = document.getElementById('message-log');
+    const clearLogBtn = document.getElementById('clear-log');
+
+    // 初始化 - 移除默认协议内容
+    function initialize() {
+        protoContent.value = ''; // 不设置默认协议内容
+        wsUrl.value = 'ws://localhost:8080';
+    }
+
+    // 记录解析日志
+    function logParse(message) {
+        const time = new Date().toLocaleTimeString();
+        parseLog.innerHTML += `[${time}] ${message}\n`;
+        parseLog.scrollTop = parseLog.scrollHeight;
+    }
+
+    // 记录消息日志
+    function logMessage(type, content, direction) {
+        const time = new Date().toLocaleTimeString();
+        const logItem = document.createElement('div');
+        logItem.className = 'mb-3 pb-3 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0';
+
+        let bgClass, icon;
+        if (direction === 'in') {
+            bgClass = 'bg-blue-50 text-blue-800';
+            icon = 'fa-arrow-down text-blue-500';
+        } else if (direction === 'out') {
+            bgClass = 'bg-green-50 text-green-800';
+            icon = 'fa-arrow-up text-green-500';
+        } else if (direction === 'error') {
+            bgClass = 'bg-red-50 text-red-800';
+            icon = 'fa-exclamation-circle text-red-500';
+        } else {
+            bgClass = 'bg-gray-50 text-gray-800';
+            icon = 'fa-info-circle text-gray-500';
+        }
+
+        logItem.innerHTML = `
+            <div class="flex justify-between items-center mb-1">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${bgClass}">
+                    <i class="fa ${icon} mr-1"></i>${type}
+                </span>
+                <span class="text-xs text-gray-500">${time}</span>
+            </div>
+            <div class="text-sm font-mono bg-gray-100 p-2 rounded overflow-x-auto">
+                ${content}
+            </div>
+        `;
+
+        if (messageLog.querySelector('italic')) {
+            messageLog.innerHTML = '';
+        }
+        messageLog.appendChild(logItem);
+        messageLog.scrollTop = messageLog.scrollHeight;
+    }
+
+    // 解析协议函数
+    function parseProtocol() {
+        // 重置状态
+        protoRoot = null;
+        messageTypes = {};
+        messageType.innerHTML = '<option value="">请先解析协议</option>';
+        messageType.disabled = true;
+        messageType.classList.add('bg-gray-50', 'cursor-not-allowed');
+
+        const content = protoContent.value.trim();
+        if (!content) {
+            logParse('错误: 协议内容不能为空');
+            return;
+        }
+
+        try {
+            logParse('开始解析协议...');
+
+            // 使用protobufjs解析协议
+            protoRoot = protobuf.parse(content).root;
+            logParse('协议解析成功');
+
+            // 收集所有消息类型
+            const types = [];
+            protoRoot.nestedArray.forEach(function traverseNamespace(namespace, currentPath = '') {
+                const path = currentPath ? `${currentPath}.${namespace.name}` : namespace.name;
+
+                // 记录命名空间
+                logParse(`检查命名空间: ${path || '根'}`);
+
+                // 检查当前命名空间中的消息
+                if (namespace.nested) {
+                    for (const name in namespace.nested) {
+                        const item = namespace.nested[name];
+                        if (item instanceof protobuf.Type) {
+                            // 找到消息类型
+                            const fullName = path ? `${path}.${name}` : name;
+                            messageTypes[fullName] = item;
+                            types.push(fullName);
+                            logParse(`发现消息类型: ${fullName}`);
+                        } else if (item instanceof protobuf.Namespace) {
+                            // 递归处理子命名空间
+                            traverseNamespace(item, path);
+                        }
+                    }
+                }
+            });
+
+            // 更新消息类型选择器
+            if (types.length > 0) {
+                messageType.innerHTML = '<option value="">请选择消息类型</option>';
+                types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    messageType.appendChild(option);
+                });
+                messageType.disabled = false;
+                messageType.classList.remove('bg-gray-50', 'cursor-not-allowed');
+                logParse(`共发现 ${types.length} 种消息类型`);
+                logMessage('系统', `协议解析完成，发现 ${types.length} 种消息类型`, 'system');
+            } else {
+                logParse('警告: 未发现任何消息类型');
+                logMessage('警告', '未发现任何消息类型，请检查协议格式', 'error');
+            }
+
+        } catch (error) {
+            logParse(`解析错误: ${error.message}`);
+            logMessage('解析错误', error.message, 'error');
+        }
+    }
+
+    // 生成示例JSON
+    function generateExampleJson() {
+        const selectedType = messageType.value;
+        if (!selectedType || !messageTypes[selectedType]) {
+            messageJson.placeholder = '输入消息的JSON格式内容';
+            return;
+        }
+
+        const type = messageTypes[selectedType];
+        const example = {};
+
+        // 为每个字段生成示例值
+        type.fieldsArray.forEach(field => {
+            switch (field.type) {
+                case 'int32':
+                case 'int64':
+                case 'uint32':
+                case 'uint64':
+                    example[field.name] = 1;
+                    break;
+                case 'float':
+                case 'double':
+                    example[field.name] = 1.0;
+                    break;
+                case 'bool':
+                    example[field.name] = true;
+                    break;
+                case 'string':
+                    example[field.name] = 'example';
+                    break;
+                default:
+                    example[field.name] = null;
+            }
+        });
+
+        messageJson.placeholder = JSON.stringify(example, null, 2);
+    }
+
+    // 连接WebSocket
+    function connectWebSocket() {
+        const url = wsUrl.value.trim();
+        if (!url) {
+            logMessage('错误', '请输入WebSocket地址', 'error');
+            return;
+        }
+
+        try {
+            websocket = new WebSocket(url);
+
+            websocket.onopen = function() {
+                isConnected = true;
+                updateConnectionStatus(true);
+                logMessage('连接', `已连接到 ${url}`, 'system');
+
+                // 启用/禁用按钮
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+            };
+
+            websocket.onmessage = function(event) {
+                if (event.data instanceof Blob) {
+                    // 处理二进制消息
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        const arrayBuffer = reader.result;
+                        handleBinaryMessage(arrayBuffer);
+                    };
+                    reader.readAsArrayBuffer(event.data);
+                } else {
+                    // 处理文本消息
+                    logMessage('接收', event.data, 'in');
+                }
+            };
+
+            websocket.onclose = function(event) {
+                isConnected = false;
+                updateConnectionStatus(false);
+                logMessage('断开', `连接已关闭 (代码: ${event.code})`, 'system');
+
+                // 启用/禁用按钮
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                sendBtn.disabled = true;
+            };
+
+            websocket.onerror = function(error) {
+                logMessage('错误', `WebSocket错误: ${error.message}`, 'error');
+            };
+
+        } catch (error) {
+            logMessage('错误', `无法连接: ${error.message}`, 'error');
+        }
+    }
+
+    // 处理二进制消息
+    function handleBinaryMessage(arrayBuffer) {
+        if (!protoRoot || Object.keys(messageTypes).length === 0) {
+            // 无法解析，显示原始数据
+            const hex = arrayBufferToHex(arrayBuffer);
+            logMessage('接收 (二进制)', `长度: ${arrayBuffer.byteLength} 字节\n${hex}`, 'in');
+            return;
+        }
+
+        // 尝试解析为已知消息类型
+        let decoded = null;
+        let decodedType = null;
+
+        for (const typeName in messageTypes) {
+            try {
+                const type = messageTypes[typeName];
+                decoded = type.decode(new Uint8Array(arrayBuffer));
+                decodedType = typeName;
+                break;
+            } catch (e) {
+                // 尝试下一种类型
+                continue;
+            }
+        }
+
+        if (decoded && decodedType) {
+            // 解析成功
+            const json = JSON.stringify(messageTypes[decodedType].toObject(decoded), null, 2);
+            logMessage(`接收 (${decodedType})`, json, 'in');
+        } else {
+            // 解析失败，显示原始数据
+            const hex = arrayBufferToHex(arrayBuffer);
+            logMessage('接收 (未识别二进制)', `长度: ${arrayBuffer.byteLength} 字节\n${hex}`, 'in');
+        }
+    }
+
+    // 数组缓冲区转十六进制
+    function arrayBufferToHex(buffer) {
+        return Array.from(new Uint8Array(buffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join(' ');
+    }
+
+    // 断开WebSocket连接
+    function disconnectWebSocket() {
+        if (websocket && isConnected) {
+            websocket.close();
+            isConnected = false;
+        }
+    }
+
+    // 发送消息
+    function sendMessage() {
+        if (!isConnected || !websocket) {
+            logMessage('错误', '未连接到服务器', 'error');
+            return;
+        }
+
+        const selectedType = messageType.value;
+        const jsonContent = messageJson.value.trim();
+
+        if (!selectedType) {
+            logMessage('错误', '请选择消息类型', 'error');
+            return;
+        }
+
+        if (!jsonContent) {
+            logMessage('错误', '请输入消息内容', 'error');
+            return;
+        }
+
+        try {
+            // 解析JSON
+            const messageObject = JSON.parse(jsonContent);
+
+            // 获取消息类型并编码
+            const type = messageTypes[selectedType];
+            const buffer = type.encode(type.create(messageObject)).finish();
+
+            // 发送二进制数据
+            websocket.send(buffer);
+            logMessage(`发送 (${selectedType})`, jsonContent, 'out');
+
+            // 不清除消息内容（根据需求修改）
+            // messageJson.value = '';
+        } catch (error) {
+            logMessage('发送错误', error.message, 'error');
+        }
+    }
+
+    // 更新连接状态显示
+    function updateConnectionStatus(connected) {
+        if (connected) {
+            connectionStatus.innerHTML = `
+                <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                已连接
+            `;
+            connectionStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800';
+        } else {
+            connectionStatus.innerHTML = `
+                <span class="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
+                未连接
+            `;
+            connectionStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800';
+        }
+    }
+
+    // 清空日志
+    function clearLog() {
+        messageLog.innerHTML = '<div class="text-gray-500 italic">消息将显示在这里</div>';
+    }
+
+    // 事件监听
+    parseBtn.addEventListener('click', parseProtocol);
+    messageType.addEventListener('change', generateExampleJson);
+    connectBtn.addEventListener('click', connectWebSocket);
+    disconnectBtn.addEventListener('click', disconnectWebSocket);
+    sendBtn.addEventListener('click', sendMessage);
+    clearLogBtn.addEventListener('click', clearLog);
+
+    // 初始化
+    initialize();
+</script>
+</body>
+</html>

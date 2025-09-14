@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋 - Protobuf通信</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 引入protobufjs库 - 使用兼容版本 -->
+    <script src="https://cdn.jsdelivr.net/npm/protobufjs@6.11.3/dist/protobuf.min.js"></script>
+
+    <!-- 配置Tailwind自定义颜色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wood: {
+                            light: '#E6C389',
+                            DEFAULT: '#D4A76A',
+                            dark: '#A67C52'
+                        },
+                        stone: {
+                            black: '#222222',
+                            white: '#F8F8F8'
+                        },
+                        ws: {
+                            connected: '#10B981',
+                            disconnected: '#EF4444',
+                            connecting: '#F59E0B'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .board-texture {
+                background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%239C92AC' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+            }
+            .stone-hover {
+                @apply transition-all duration-200 transform hover:scale-105;
+            }
+            .btn-effect {
+                @apply transition-all duration-300 hover:shadow-lg active:scale-95;
+            }
+            .pulse-connecting {
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 to-yellow-100 min-h-screen font-sans text-gray-800 flex flex-col items-center py-6 px-4">
+<div class="max-w-md w-full mx-auto flex flex-col items-center">
+    <!-- 游戏标题 -->
+    <header class="text-center mb-6 w-full">
+        <h1 class="text-[clamp(1.8rem,5vw,2.5rem)] font-bold text-wood-dark mb-2 tracking-wide">五子棋</h1>
+        <p class="text-gray-600 text-base md:text-lg">Protobuf协议通信版</p>
+    </header>
+
+    <!-- 服务器连接设置 -->
+    <div class="w-full bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md mb-6">
+        <h3 class="text-sm font-bold text-wood-dark mb-3 flex items-center gap-2">
+            <i class="fa fa-server"></i>服务器设置
+        </h3>
+        <div class="grid grid-cols-1 gap-3 mb-3">
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">IP地址</label>
+                <input type="text" id="server-ip" value="114.67.155.186"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-wood">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">端口号</label>
+                <input type="number" id="server-port" value="30001" min="1" max="65535"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-wood">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">路径</label>
+                <input type="text" id="server-path" value="/game"
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-wood">
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button id="connect-ws" class="bg-wood text-white px-4 py-2 rounded-md text-sm btn-effect flex-1">
+                <i class="fa fa-plug mr-1"></i> 连接
+            </button>
+            <button id="disconnect-ws" class="bg-gray-500 text-white px-4 py-2 rounded-md text-sm btn-effect flex-1" disabled>
+                <i class="fa fa-unplug mr-1"></i> 断开
+            </button>
+        </div>
+    </div>
+
+    <!-- 游戏状态和控制区 -->
+    <div class="w-full flex flex-wrap justify-between items-center gap-4 bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md mb-6">
+        <div class="flex items-center gap-3">
+            <div id="current-player" class="w-6 h-6 rounded-full bg-stone-black shadow-md"></div>
+            <p class="text-base md:text-lg font-medium">
+                <span id="player-text">黑棋</span> 回合
+            </p>
+        </div>
+
+        <!-- WebSocket连接状态 -->
+        <div class="flex items-center gap-2">
+            <div id="ws-status-indicator" class="w-3 h-3 rounded-full bg-ws-connecting pulse-connecting"></div>
+            <span id="ws-status-text" class="text-sm text-gray-600">未连接</span>
+        </div>
+
+        <div id="game-status" class="text-base md:text-lg font-semibold text-wood-dark">等待连接...</div>
+
+        <button id="restart-btn" class="bg-wood text-white px-5 py-2 rounded-full flex items-center gap-2 btn-effect shadow">
+            <i class="fa fa-refresh"></i>
+            <span>重新开始</span>
+        </button>
+    </div>
+
+    <!-- 棋盘区域 -->
+    <div class="relative mb-6 select-none">
+        <div id="board" class="grid grid-cols-12 gap-0 rounded-md overflow-hidden shadow-xl board-texture">
+            <!-- 棋盘将通过JavaScript动态生成 -->
+        </div>
+
+        <!-- 胜利提示覆盖层 -->
+        <div id="win-overlay" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm rounded-md flex flex-col items-center justify-center gap-5 p-4">
+            <div id="winner-text" class="text-white text-xl md:text-2xl font-bold text-center"></div>
+            <button id="new-game-btn" class="bg-white text-wood-dark px-6 py-3 rounded-full text-base md:text-lg font-medium btn-effect shadow-lg">
+                开始新游戏
+            </button>
+        </div>
+    </div>
+
+    <!-- 消息日志 -->
+    <div class="w-full bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-sm mb-6">
+        <h3 class="text-sm font-bold text-wood-dark mb-2">消息日志:</h3>
+        <div id="message-log" class="h-24 bg-gray-100 rounded-md p-2 text-xs overflow-y-auto text-gray-700">
+            <div>初始化Protobuf协议...</div>
+            <div>请设置服务器地址并点击连接...</div>
+        </div>
+    </div>
+
+    <!-- 游戏说明 -->
+    <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-sm w-full">
+        <h2 class="text-lg font-bold text-wood-dark mb-2 flex items-center gap-2">
+            <i class="fa fa-info-circle"></i>游戏说明
+        </h2>
+        <ul class="text-gray-700 text-sm space-y-1.5">
+            <li class="flex items-start gap-2">
+                <i class="fa fa-circle text-xs mt-1.5 text-wood-dark"></i>
+                <span>游戏使用Protobuf协议通过WebSocket通信</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <i class="fa fa-circle text-xs mt-1.5 text-wood-dark"></i>
+                <span>落子时自动发送Protobuf格式的消息到服务器</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <i class="fa fa-circle text-xs mt-1.5 text-wood-dark"></i>
+                <span>率先在横、竖或斜方向连成五子者获胜</span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // Protobuf消息处理类
+    class GomokuProtoHandler {
+        constructor() {
+            this.root = new protobuf.Root();
+            this.Message = null;
+            this.CSPlaceStone = null;
+            this.SCPlaceStone = null;
+            this.initProto();
+        }
+
+        // 初始化Protobuf定义 - 使用兼容的API
+        async initProto() {
+            try {
+                logMessage("加载Protobuf协议定义...");
+
+                // 定义protobuf消息结构（使用v6版本兼容的语法）
+                const root = this.root;
+
+                root.define('com.jdt.game.monopoly.msg', {
+                    Message: {
+                        fields: {
+                            csRoll: { type: 'CSRoll', id: 1001 },
+                            scRoll: { type: 'SCRoll', id: 1002 },
+                            csPlaceStone: { type: 'CSPlaceStone', id: 1003 },
+                            scPlaceStone: { type: 'SCPlaceStone', id: 1004 },
+                            csGameEnd: { type: 'CSGameEnd', id: 1005 },
+                            scGameEnd: { type: 'SCGameEnd', id: 1006 }
+                        }
+                    },
+                    CSRoll: {
+                        fields: {}
+                    },
+                    SCRoll: {
+                        fields: {
+                            num: { type: 'int32', id: 1 }
+                        }
+                    },
+                    CSPlaceStone: {
+                        fields: {
+                            player: { type: 'int32', id: 1 },
+                            row: { type: 'int32', id: 2 },
+                            col: { type: 'int32', id: 3 }
+                        }
+                    },
+                    SCPlaceStone: {
+                        fields: {
+                            player: { type: 'int32', id: 1 },
+                            row: { type: 'int32', id: 2 },
+                            col: { type: 'int32', id: 3 },
+                            valid: { type: 'bool', id: 4 }
+                        }
+                    },
+                    CSGameEnd: {
+                        fields: {
+                            winner: { type: 'int32', id: 1 }
+                        }
+                    },
+                    SCGameEnd: {
+                        fields: {
+                            winner: { type: 'int32', id: 1 },
+                            confirmed: { type: 'bool', id: 2 }
+                        }
+                    }
+                });
+
+                // 获取消息类型
+                this.Message = root.lookupType('com.jdt.game.monopoly.msg.Message');
+                this.CSPlaceStone = root.lookupType('com.jdt.game.monopoly.msg.CSPlaceStone');
+                this.CSGameEnd = root.lookupType('com.jdt.game.monopoly.msg.CSGameEnd');
+
+                logMessage("Protobuf协议初始化完成");
+                return true;
+            } catch (error) {
+                logMessage(`Protobuf初始化错误: ${error.message}`);
+                return false;
+            }
+        }
+
+        // 编码落子消息
+        encodePlaceStoneMessage(player, row, col) {
+            if (!this.Message || !this.CSPlaceStone) {
+                logMessage("Protobuf未初始化完成，无法编码消息");
+                return null;
+            }
+
+            try {
+                // 转换玩家标识: black->1, white->2
+                const playerCode = player === 'black' ? 1 : 2;
+
+                // 创建CSPlaceStone消息
+                const csPlaceStone = this.CSPlaceStone.create({
+                    player: playerCode,
+                    row: row,
+                    col: col
+                });
+
+                // 包装到Message中
+                const message = this.Message.create({
+                    csPlaceStone: csPlaceStone
+                });
+
+                // 编码为二进制
+                const buffer = this.Message.encode(message).finish();
+                return buffer;
+            } catch (error) {
+                logMessage(`消息编码错误: ${error.message}`);
+                return null;
+            }
+        }
+
+        // 编码游戏结束消息
+        encodeGameEndMessage(winner) {
+            if (!this.Message || !this.CSGameEnd) {
+                logMessage("Protobuf未初始化完成，无法编码消息");
+                return null;
+            }
+
+            try {
+                // 转换赢家标识: black->1, white->2, draw->0
+                let winnerCode = 0;
+                if (winner === 'black') winnerCode = 1;
+                else if (winner === 'white') winnerCode = 2;
+
+                // 创建CSGameEnd消息
+                const csGameEnd = this.CSGameEnd.create({
+                    winner: winnerCode
+                });
+
+                // 包装到Message中
+                const message = this.Message.create({
+                    csGameEnd: csGameEnd
+                });
+
+                // 编码为二进制
+                const buffer = this.Message.encode(message).finish();
+                return buffer;
+            } catch (error) {
+                logMessage(`消息编码错误: ${error.message}`);
+                return null;
+            }
+        }
+
+        // 解码收到的消息
+        decodeMessage(buffer) {
+            if (!this.Message) {
+                logMessage("Protobuf未初始化完成，无法解码消息");
+                return null;
+            }
+
+            try {
+                const message = this.Message.decode(buffer);
+                return this.Message.toObject(message, { defaults: true });
+            } catch (error) {
+                logMessage(`消息解码错误: ${error.message}`);
+                return null;
+            }
+        }
+    }
+
+    // 游戏配置
+    const BOARD_SIZE = 12; // 12×12棋盘
+    let currentPlayer = 'black'; // 黑棋先行
+    let gameBoard = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+    let gameActive = false; // 初始为未激活，等待连接
+    let websocket = null;
+    let connectionAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    let protoHandler = null;
+
+    // DOM元素
+    const boardElement = document.getElementById('board');
+    const currentPlayerElement = document.getElementById('current-player');
+    const playerTextElement = document.getElementById('player-text');
+    const gameStatusElement = document.getElementById('game-status');
+    const restartButton = document.getElementById('restart-btn');
+    const newGameButton = document.getElementById('new-game-btn');
+    const winOverlay = document.getElementById('win-overlay');
+    const winnerTextElement = document.getElementById('winner-text');
+    const connectWsButton = document.getElementById('connect-ws');
+    const disconnectWsButton = document.getElementById('disconnect-ws');
+    const wsStatusIndicator = document.getElementById('ws-status-indicator');
+    const wsStatusText = document.getElementById('ws-status-text');
+    const messageLog = document.getElementById('message-log');
+    const serverIpInput = document.getElementById('server-ip');
+    const serverPortInput = document.getElementById('server-port');
+    const serverPathInput = document.getElementById('server-path'); // 新增路径输入框
+
+    // 初始化棋盘
+    function initializeBoard() {
+        boardElement.innerHTML = '';
+
+        // 设置棋盘尺寸，响应式调整
+        const maxBoardSize = Math.min(window.innerWidth - 40, 450);
+        boardElement.style.width = `${maxBoardSize}px`;
+        boardElement.style.height = `${maxBoardSize}px`;
+
+        // 创建棋盘格子
+        for (let row = 0; row < BOARD_SIZE; row++) {
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                const cell = document.createElement('div');
+                cell.classList.add(
+                    'relative',
+                    'border',
+                    'border-wood-dark/30',
+                    'bg-wood',
+                    'hover:bg-wood-light/70',
+                    'transition-colors',
+                    'duration-200',
+                    'cursor-pointer'
+                );
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+
+                // 添加点击事件
+                cell.addEventListener('click', handleCellClick);
+
+                boardElement.appendChild(cell);
+            }
+        }
+
+        // 添加棋盘标记点
+        addBoardMarkers();
+    }
+
+    // 添加棋盘标记点
+    function addBoardMarkers() {
+        const markers = [
+            {row: 2, col: 2},
+            {row: 2, col: 9},
+            {row: 5, col: 5},
+            {row: 5, col: 6},
+            {row: 9, col: 2},
+            {row: 9, col: 9}
+        ];
+
+        markers.forEach(marker => {
+            const cell = boardElement.querySelector(`[data-row="${marker.row}"][data-col="${marker.col}"]`);
+            if (cell) {
+                const markerElement = document.createElement('div');
+                markerElement.classList.add(
+                    'absolute',
+                    'w-1.5',
+                    'h-1.5',
+                    'bg-wood-dark/70',
+                    'rounded-full',
+                    'top-1/2',
+                    'left-1/2',
+                    '-translate-x-1/2',
+                    '-translate-y-1/2'
+                );
+                cell.appendChild(markerElement);
+            }
+        });
+    }
+
+    // 处理格子点击
+    function handleCellClick(event) {
+        // 如果未连接服务器，不允许落子
+        if (!gameActive) {
+            logMessage("请先连接服务器再进行游戏");
+            return;
+        }
+
+        // 获取点击的格子坐标
+        const cell = event.target.closest('[data-row]');
+        if (!cell) return;
+
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+
+        // 检查格子是否已被占用或游戏是否已结束
+        if (gameBoard[row][col] || !gameActive) {
+            return;
+        }
+
+        // 落子
+        placeStone(row, col);
+
+        // 通过WebSocket发送Protobuf格式的落子信息
+        sendPlaceStoneProtobuf(row, col);
+
+        // 检查是否获胜
+        if (checkWin(row, col)) {
+            endGame(false);
+            return;
+        }
+
+        // 检查是否平局
+        if (checkDraw()) {
+            endGame(true);
+            return;
+        }
+
+        // 切换玩家
+        switchPlayer();
+    }
+
+    // 落子
+    function placeStone(row, col) {
+        // 更新数据
+        gameBoard[row][col] = currentPlayer;
+
+        // 更新UI
+        const cell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        const stone = document.createElement('div');
+
+        // 根据当前玩家设置棋子样式
+        stone.classList.add(
+            'absolute',
+            'rounded-full',
+            'shadow-md',
+            'top-1/2',
+            'left-1/2',
+            '-translate-x-1/2',
+            '-translate-y-1/2',
+            'transition-all',
+            'duration-300',
+            'scale-0',
+            'stone-hover'
+        );
+
+        // 设置棋子颜色
+        if (currentPlayer === 'black') {
+            stone.classList.add('bg-stone-black', 'border', 'border-gray-700/50');
+        } else {
+            stone.classList.add('bg-stone-white', 'border', 'border-gray-300/50');
+        }
+
+        // 计算棋子大小
+        const boardSize = parseInt(getComputedStyle(boardElement).width);
+        const stoneSize = (boardSize / BOARD_SIZE) * 0.85;
+        stone.style.width = `${stoneSize}px`;
+        stone.style.height = `${stoneSize}px`;
+
+        cell.appendChild(stone);
+
+        // 添加落子动画
+        setTimeout(() => {
+            stone.classList.remove('scale-0');
+            stone.classList.add('scale-100');
+        }, 50);
+    }
+
+    // 切换玩家
+    function switchPlayer() {
+        currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+
+        // 更新UI
+        currentPlayerElement.className = 'w-6 h-6 rounded-full shadow-md';
+        currentPlayerElement.classList.add(
+            currentPlayer === 'black' ? 'bg-stone-black' : 'bg-stone-white',
+            currentPlayer === 'white' ? 'border border-gray-300' : ''
+        );
+        playerTextElement.textContent = currentPlayer === 'black' ? '黑棋' : '白棋';
+    }
+
+    // 检查是否获胜
+    function checkWin(row, col) {
+        const directions = [
+            [0, 1],  // 水平方向
+            [1, 0],  // 垂直方向
+            [1, 1],  // 对角线方向
+            [1, -1]  // 反对角线方向
+        ];
+
+        const player = gameBoard[row][col];
+
+        // 检查每个方向
+        for (const [dx, dy] of directions) {
+            let count = 1; // 当前位置已有一个棋子
+
+            // 正方向检查
+            for (let i = 1; i < 5; i++) {
+                const newRow = row + i * dx;
+                const newCol = col + i * dy;
+
+                if (
+                    newRow >= 0 && newRow < BOARD_SIZE &&
+                    newCol >= 0 && newCol < BOARD_SIZE &&
+                    gameBoard[newRow][newCol] === player
+                ) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+
+            // 反方向检查
+            for (let i = 1; i < 5; i++) {
+                const newRow = row - i * dx;
+                const newCol = col - i * dy;
+
+                if (
+                    newRow >= 0 && newRow < BOARD_SIZE &&
+                    newCol >= 0 && newCol < BOARD_SIZE &&
+                    gameBoard[newRow][newCol] === player
+                ) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+
+            // 连成5个或更多，获胜
+            if (count >= 5) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // 检查是否平局
+    function checkDraw() {
+        for (let row = 0; row < BOARD_SIZE; row++) {
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                if (!gameBoard[row][col]) {
+                    return false; // 还有空格子，不是平局
+                }
+            }
+        }
+        return true; // 棋盘已满，平局
+    }
+
+    // 结束游戏
+    function endGame(isDraw) {
+        gameActive = false;
+
+        let winner = isDraw ? 'draw' : currentPlayer;
+
+        if (isDraw) {
+            gameStatusElement.textContent = '游戏平局！';
+            gameStatusElement.classList.add('text-amber-600');
+            winnerTextElement.textContent = '游戏平局！';
+        } else {
+            const winnerText = currentPlayer === 'black' ? '黑棋' : '白棋';
+            gameStatusElement.textContent = `${winnerText}获胜！`;
+            gameStatusElement.classList.add('text-rose-600');
+            winnerTextElement.textContent = `${winnerText}获胜！`;
+        }
+
+        // 发送游戏结束消息(Protobuf格式)
+        sendGameEndProtobuf(winner);
+
+        // 显示胜利覆盖层
+        winOverlay.classList.remove('hidden');
+        winOverlay.classList.add('flex');
+    }
+
+    // 重置游戏
+    function resetGame() {
+        // 重置游戏状态
+        currentPlayer = 'black';
+        gameBoard = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+        gameActive = websocket && websocket.readyState === WebSocket.OPEN; // 只有连接时才激活
+
+        // 重置UI
+        currentPlayerElement.className = 'w-6 h-6 rounded-full bg-stone-black shadow-md';
+        playerTextElement.textContent = '黑棋';
+        gameStatusElement.textContent = gameActive ? '游戏进行中' : '等待连接...';
+        gameStatusElement.classList.remove('text-rose-600', 'text-amber-600');
+        winOverlay.classList.add('hidden');
+        winOverlay.classList.remove('flex');
+
+        // 重新初始化棋盘
+        initializeBoard();
+    }
+
+    // 发送落子消息(Protobuf格式)
+    function sendPlaceStoneProtobuf(row, col) {
+        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            logMessage('WebSocket未连接，无法发送落子消息');
+            return;
+        }
+
+        if (!protoHandler) {
+            logMessage('Protobuf处理器未初始化，无法发送消息');
+            return;
+        }
+
+        // 编码落子消息
+        const buffer = protoHandler.encodePlaceStoneMessage(currentPlayer, row, col);
+        if (buffer) {
+            try {
+                websocket.send(buffer);
+                logMessage(`发送落子消息: 玩家${currentPlayer}, 位置(${row},${col})`);
+            } catch (error) {
+                logMessage(`发送失败: ${error.message}`);
+            }
+        }
+    }
+
+    // 发送游戏结束消息(Protobuf格式)
+    function sendGameEndProtobuf(winner) {
+        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        if (!protoHandler) {
+            logMessage('Protobuf处理器未初始化，无法发送消息');
+            return;
+        }
+
+        // 编码游戏结束消息
+        const buffer = protoHandler.encodeGameEndMessage(winner);
+        if (buffer) {
+            try {
+                websocket.send(buffer);
+                logMessage(`发送游戏结束消息: ${winner === 'draw' ? '平局' : `获胜者:${winner}`}`);
+            } catch (error) {
+                logMessage(`发送失败: ${error.message}`);
+            }
+        }
+    }
+
+    // WebSocket相关函数
+    function connectWebSocket() {
+        // 验证IP、端口和路径
+        const ip = serverIpInput.value.trim();
+        const port = serverPortInput.value.trim();
+        let path = serverPathInput.value.trim();
+
+        if (!ip) {
+            logMessage('请输入服务器IP地址');
+            return;
+        }
+
+        if (!port || isNaN(port) || port < 1 || port > 65535) {
+            logMessage('请输入有效的端口号(1-65535)');
+            return;
+        }
+
+        // 确保路径以/开头
+        if (!path.startsWith('/')) {
+            path = '/' + path;
+        }
+        // 如果路径为空，使用根路径
+        if (path === '') {
+            path = '/';
+        }
+
+        const WS_URL = `ws://${ip}:${port}${path}`;
+
+        // 如果已经连接则先断开
+        if (websocket) {
+            websocket.close();
+        }
+
+        // 重置连接尝试计数
+        if (connectionAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            connectionAttempts = 0;
+        }
+
+        try {
+            logMessage(`正在连接到 ${WS_URL} (尝试 ${connectionAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+            updateWebSocketStatus('connecting');
+
+            websocket = new WebSocket(WS_URL);
+
+            // 二进制消息处理
+            websocket.binaryType = 'arraybuffer';
+
+            websocket.onopen = function() {
+                connectionAttempts = 0; // 重置连接尝试计数
+                logMessage('WebSocket连接已建立');
+                updateWebSocketStatus('connected');
+                gameActive = true;
+                gameStatusElement.textContent = '游戏进行中';
+                // 连接成功后初始化游戏
+                resetGame();
+            };
+
+            websocket.onclose = function(event) {
+                logMessage(`WebSocket连接已关闭 (代码: ${event.code})`);
+                updateWebSocketStatus('disconnected');
+                gameActive = false;
+                gameStatusElement.textContent = '连接已断开';
+
+                // 自动重连，除非达到最大尝试次数
+                if (connectionAttempts < MAX_RECONNECT_ATTEMPTS - 1) {
+                    connectionAttempts++;
+                    const reconnectDelay = 1000 * Math.pow(2, connectionAttempts); // 指数退避
+                    logMessage(`将在 ${reconnectDelay / 1000} 秒后尝试重连...`);
+                    setTimeout(() => connectWebSocket(), reconnectDelay);
+                } else {
+                    logMessage(`已达到最大重连次数 (${MAX_RECONNECT_ATTEMPTS})，请手动重试`);
+                }
+            };
+
+            websocket.onerror = function(error) {
+                logMessage(`WebSocket错误: ${error}`);
+            };
+
+            websocket.onmessage = function(event) {
+                // 处理收到的Protobuf消息
+                if (event.data instanceof ArrayBuffer && protoHandler) {
+                    const message = protoHandler.decodeMessage(new Uint8Array(event.data));
+                    if (message) {
+                        handleReceivedMessage(message);
+                    }
+                } else {
+                    logMessage(`收到文本消息: ${event.data}`);
+                }
+            };
+        } catch (error) {
+            logMessage(`连接失败: ${error.message}`);
+            updateWebSocketStatus('disconnected');
+
+            // 安排重连
+            if (connectionAttempts < MAX_RECONNECT_ATTEMPTS - 1) {
+                connectionAttempts++;
+                setTimeout(() => connectWebSocket(), 1000 * (connectionAttempts + 1));
+            }
+        }
+    }
+
+    // 处理收到的消息
+    function handleReceivedMessage(message) {
+        logMessage(`收到Protobuf消息: ${JSON.stringify(message)}`);
+
+        // 根据消息类型处理
+        switch (true) {
+            case message.scRoll !== undefined:
+                logMessage(`服务器发送的骰子结果: ${message.scRoll.num}`);
+                break;
+            case message.scPlaceStone !== undefined:
+                logMessage(`服务器确认落子: 玩家${message.scPlaceStone.player}, 位置(${message.scPlaceStone.row},${message.scPlaceStone.col}), 有效:${message.scPlaceStone.valid}`);
+                break;
+            case message.scGameEnd !== undefined:
+                const winnerText = message.scGameEnd.winner === 1 ? '黑棋' :
+                                 message.scGameEnd.winner === 2 ? '白棋' : '平局';
+                logMessage(`服务器确认游戏结束: 获胜者${winnerText}, 确认:${message.scGameEnd.confirmed}`);
+
+                // 显示游戏结束
+                gameActive = false;
+                gameStatusElement.textContent = `${winnerText}获胜！`;
+                gameStatusElement.classList.add('text-rose-600');
+                winnerTextElement.textContent = `${winnerText}获胜！`;
+                winOverlay.classList.remove('hidden');
+                winOverlay.classList.add('flex');
+                break;
+            default:
+                logMessage(`收到未知类型消息`);
+        }
+    }
+
+    function disconnectWebSocket() {
+        if (websocket) {
+            // 关闭时不自动重连
+            connectionAttempts = MAX_RECONNECT_ATTEMPTS;
+            websocket.close();
+            websocket = null;
+            updateWebSocketStatus('disconnected');
+            gameActive = false;
+            gameStatusElement.textContent = '已断开连接';
+            logMessage('已手动断开连接');
+        }
+    }
+
+    function updateWebSocketStatus(status) {
+        switch(status) {
+            case 'connected':
+                wsStatusIndicator.className = 'w-3 h-3 rounded-full bg-ws-connected';
+                wsStatusText.textContent = '已连接';
+                connectWsButton.disabled = false;
+                disconnectWsButton.disabled = false;
+                connectWsButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                disconnectWsButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                disconnectWsButton.classList.add('bg-rose-500');
+                break;
+            case 'disconnected':
+                wsStatusIndicator.className = 'w-3 h-3 rounded-full bg-ws-disconnected';
+                wsStatusText.textContent = '未连接';
+                connectWsButton.disabled = false;
+                disconnectWsButton.disabled = true;
+                connectWsButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                disconnectWsButton.classList.add('opacity-50', 'cursor-not-allowed');
+                disconnectWsButton.classList.remove('bg-rose-500');
+                break;
+            case 'connecting':
+                wsStatusIndicator.className = 'w-3 h-3 rounded-full bg-ws-connecting pulse-connecting';
+                wsStatusText.textContent = '连接中...';
+                connectWsButton.disabled = true;
+                disconnectWsButton.disabled = true;
+                connectWsButton.classList.add('opacity-50', 'cursor-not-allowed');
+                disconnectWsButton.classList.add('opacity-50', 'cursor-not-allowed');
+                break;
+        }
+    }
+
+    // 记录消息
+    function logMessage(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = 'mb-1 border-b border-gray-200 pb-1 last:border-0 last:mb-0 last:pb-0';
+        logEntry.innerHTML = `<span class="text-gray-500">${timestamp}</span> - ${message}`;
+        messageLog.appendChild(logEntry);
+        messageLog.scrollTop = messageLog.scrollHeight; // 滚动到底部
+    }
+
+    // 事件监听
+    restartButton.addEventListener('click', resetGame);
+    newGameButton.addEventListener('click', resetGame);
+    connectWsButton.addEventListener('click', connectWebSocket);
+    disconnectWsButton.addEventListener('click', disconnectWebSocket);
+
+    // 窗口大小变化时重新调整棋盘
+    window.addEventListener('resize', () => {
+        if (gameActive) {
+            // 保存当前棋盘状态
+            const tempBoard = [...gameBoard.map(row => [...row])];
+
+            // 重新初始化棋盘
+            initializeBoard();
+
+            // 恢复棋子
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (tempBoard[row][col]) {
+                        const cell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                        const stone = document.createElement('div');
+                        const boardSize = parseInt(getComputedStyle(boardElement).width);
+                        const stoneSize = (boardSize / BOARD_SIZE) * 0.85;
+
+                        stone.classList.add(
+                            'absolute', 'rounded-full', 'shadow-md',
+                            'top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2',
+                            'scale-100', 'stone-hover'
+                        );
+
+                        if (tempBoard[row][col] === 'black') {
+                            stone.classList.add('bg-stone-black', 'border', 'border-gray-700/50');
+                        } else {
+                            stone.classList.add('bg-stone-white', 'border', 'border-gray-300/50');
+                        }
+
+                        stone.style.width = `${stoneSize}px`;
+                        stone.style.height = `${stoneSize}px`;
+                        cell.appendChild(stone);
+                    }
+                }
+            }
+        }
+    });
+
+    // 页面关闭时断开WebSocket连接
+    window.addEventListener('beforeunload', () => {
+        if (websocket) {
+            websocket.close();
+        }
+    });
+
+    // 初始化游戏、Protobuf处理器
+    async function init() {
+        initializeBoard();
+        protoHandler = new GomokuProtoHandler();
+        // 默认设置
+        serverIpInput.value = '114.67.155.186';
+        serverPortInput.value = '30001';
+        serverPathInput.value = '/game'; // 默认路径
+    }
+
+    // 启动初始化
+    window.addEventListener('load', init);
+</script>
+</body>
+</html>

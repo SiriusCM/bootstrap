@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: bootstrap  # 应用名（已存在）
+  # 1. 新增：数据库连接配置（MySQL 为例）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver  # MySQL 8.x 驱动类（必须指定，避免驱动识别失败）
+    url: jdbc:mysql://116.196.103.86:3306/bootstrap?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true  # 数据库连接地址
+    username: root  # 数据库用户名（替换为你的实际用户名）
+    password: gaoliandi  # 数据库密码（替换为你的实际密码）
+  # 2. 可选：JPA 配置（优化 ORM 行为，避免默认配置问题）
+  jpa:
+    hibernate:
+      ddl-auto: update  # 表结构自动维护（开发环境用 update，生产环境用 none）
+    show-sql: true  # 控制台打印 SQL 语句（开发环境调试用）
+    properties:
+      hibernate:
+        format_sql: true  # 格式化 SQL 语句（可读性更高）
+    database-platform: org.hibernate.dialect.MySQL8Dialect  # 指定 MySQL 方言（适配数据库特性）
+
+# 服务端口配置（已存在，注意：server 无 host 属性，需删除无效配置）
+server:
+  port: 40002  # 服务启动端口（正确配置）
+  # host: 127.0.0.1  # 错误配置：Spring Boot 的 server 节点没有 host 属性，会导致配置解析警告，建议删除
+
+# 自定义业务配置（game 相关，已存在，无需修改）
+game:
+  port: 40001
+  services: match,friend
+  thread:
+    io:
+      pauseTime: 10
+    cpu:
+      pauseTime: 30
+  db:
+    pool:
+      maxNum: 10
