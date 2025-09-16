@@ -2,30 +2,30 @@ package com.sirius.bootstrap.core.sprite.scene;
 
 import com.sirius.bootstrap.core.sprite.SpriteObject;
 import com.sirius.bootstrap.core.sprite.user.UserObject;
+import com.sirius.bootstrap.core.tick.TickQueue;
 import com.sirius.bootstrap.core.tick.TickThread;
 import com.sirius.bootstrap.msg.Msg;
 import jakarta.annotation.PostConstruct;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @EqualsAndHashCode(callSuper = true)
-@Data
 @Scope("prototype")
 @Component
 public class SceneObject extends SpriteObject {
     @Autowired
     @Qualifier("sceneThread")
     private List<TickThread> sceneThreadList;
-    @Autowired
-    protected List<ISceneModule> componentList;
+    //@Autowired
+    protected List<ISceneModule> componentList = new ArrayList<>();
 
     protected final Map<String, UserObject> userObjectMap = new HashMap<>();
 
@@ -42,14 +42,17 @@ public class SceneObject extends SpriteObject {
         componentList.forEach(ISceneModule::start);
     }
 
+    @TickQueue
     public void register(UserObject userObject) {
         userObjectMap.put(userObject.getId(), userObject);
     }
 
+    @TickQueue
     public void unRegister(String id) {
         userObjectMap.remove(id);
     }
 
+    @TickQueue
     public void broadcastMsg(Msg.Message message) {
         userObjectMap.values().forEach(onlineObject -> onlineObject.replyMsg(message));
     }

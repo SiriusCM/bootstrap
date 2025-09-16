@@ -46,6 +46,8 @@ public class UserObject extends SpriteObject {
     @Override
     public void start() {
         super.start();
+        rpcObject.start();
+        persistObject.start();
         poolMap.forEach((aClass, roleBean) -> {
             try {
                 for (Method method : aClass.getDeclaredMethods()) {
@@ -101,6 +103,9 @@ public class UserObject extends SpriteObject {
     }
 
     public void dispatchMsg(Msg.Message message) {
+        if (msgConsumerMap.get(message.getMsgIdCase()) == null) {
+            return;
+        }
         msgConsumerMap.get(message.getMsgIdCase()).forEach(consumer -> consumer.accept(message));
     }
 
@@ -113,14 +118,14 @@ public class UserObject extends SpriteObject {
             return;
         }
         this.sceneObject = sceneObject;
-        this.sceneObject.getUserObjectMap().put(id, this);
+        sceneObject.register(this);
     }
 
     public void leaveScene() {
         if (sceneObject == null) {
             return;
         }
-        sceneObject.getUserObjectMap().remove(id);
+        sceneObject.unRegister(id);
     }
 
     @Override

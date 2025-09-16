@@ -2,6 +2,7 @@ package com.sirius.bootstrap.module.move;
 
 import com.sirius.bootstrap.core.io.MsgListener;
 import com.sirius.bootstrap.core.ioc.AutoBean;
+import com.sirius.bootstrap.core.sprite.scene.SceneObject;
 import com.sirius.bootstrap.core.sprite.user.IUserModule;
 import com.sirius.bootstrap.core.sprite.user.UserObject;
 import com.sirius.bootstrap.msg.Msg;
@@ -31,8 +32,8 @@ public class MoveModule implements IUserModule {
         Msg.MoveMessage moveMessage = reqMsg.getMoveMessage();
 
         Msg.MoveMessage.Builder builder = Msg.MoveMessage.newBuilder();
-        builder.setPlayerId(moveMessage.getPlayerId() + "1");
-        builder.setPosX(moveMessage.getPosX() + 3);
+        builder.setPlayerId(moveMessage.getPlayerId());
+        builder.setPosX(moveMessage.getPosX());
         builder.setPosY(moveMessage.getPosY());
         builder.setPosZ(moveMessage.getPosZ());
         builder.setRotX(moveMessage.getRotX());
@@ -43,5 +44,8 @@ public class MoveModule implements IUserModule {
         resMsg.setMoveMessage(builder);
         userObject.replyMsg(resMsg.build());
         log.info(resMsg.toString());
+
+        SceneObject sceneObject = userObject.getSceneObject();
+        sceneObject.broadcastMsg(resMsg.build());
     }
 }

@@ -7,6 +7,12 @@ spring:
     url: jdbc:mysql://116.196.103.86:3306/bootstrap?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true  # 数据库连接地址
     username: root  # 数据库用户名（替换为你的实际用户名）
     password: gaoliandi  # 数据库密码（替换为你的实际密码）
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      maximum-pool-size: 10  # 最大连接数，根据业务调整（默认 10）
+      minimum-idle: 5        # 最小空闲连接数，建议与 max 接近（默认同 max）
+      connection-timeout: 30000  # 连接超时时间（毫秒，默认 30s）
+      idle-timeout: 600000       # 空闲连接超时时间（毫秒，默认 10min）
   # 2. 可选：JPA 配置（优化 ORM 行为，避免默认配置问题）
   jpa:
     hibernate:
@@ -15,7 +21,6 @@ spring:
     properties:
       hibernate:
         format_sql: true  # 格式化 SQL 语句（可读性更高）
-    database-platform: org.hibernate.dialect.MySQL8Dialect  # 指定 MySQL 方言（适配数据库特性）
 
 # 服务端口配置（已存在，注意：server 无 host 属性，需删除无效配置）
 server:

@@ -2,6 +2,7 @@ package com.sirius.bootstrap.core.global;
 
 
 import com.sirius.bootstrap.core.io.MsgHandler;
+import com.sirius.bootstrap.core.sprite.scene.SceneObject;
 import com.sirius.bootstrap.core.sprite.user.UserObject;
 import com.sirius.bootstrap.core.tick.TickObject;
 import com.sirius.bootstrap.core.tick.TickThread;
@@ -29,9 +30,13 @@ public class GlobalService extends TickObject {
 
     protected Queue<MsgHandler> loginQueue = new LinkedBlockingQueue<>();
 
+    private SceneObject battleSceneObject;
+
     @PostConstruct
     public void postConstruct() {
         bindThread(globalThread);
+        battleSceneObject = applicationContext.getBean(SceneObject.class);
+        battleSceneObject.start();
     }
 
     @Override
@@ -52,6 +57,8 @@ public class GlobalService extends TickObject {
             msgHandler.setUserObject(userObject);
             userObject.login(UUID.randomUUID().toString(), msgHandler.getCtx());
             userObject.start();
+
+            userObject.enterScene(battleSceneObject);
         }
     }
 

@@ -5,45 +5,45 @@ import java.util.Map;
 
 public class TickThread extends Thread {
 
-    private final Map<String, TickObject> frameMap = new HashMap<>();
+    private final Map<String, TickObject> tickObjectMap = new HashMap<>();
 
     private boolean alive = true;
 
-    private int pauseTime;
+    private int tickTime;
 
-    public TickThread(String name, int pauseTime) {
+    public TickThread(String name, int tickTime) {
         super(name);
-        this.pauseTime = pauseTime;
+        this.tickTime = tickTime;
         start();
     }
 
-    public void resetPauseTime(int pauseTime) {
-        if (pauseTime <= 0) {
+    public void resetPauseTime(int tickTime) {
+        if (tickTime <= 0) {
             return;
         }
-        this.pauseTime = pauseTime;
+        this.tickTime = tickTime;
     }
 
     public synchronized void register(TickObject tickObject) {
-        frameMap.put(tickObject.getId(), tickObject);
+        tickObjectMap.put(tickObject.getId(), tickObject);
     }
 
     public synchronized void unRegister(String id) {
-        frameMap.remove(id);
+        tickObjectMap.remove(id);
     }
 
     @Override
     public void run() {
-        while (alive || !frameMap.isEmpty()) {
+        while (alive || !tickObjectMap.isEmpty()) {
             try {
-                for (TickObject tickObject : frameMap.values()) {
+                for (TickObject tickObject : tickObjectMap.values()) {
                     try {
                         tickObject.tick();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
-                Thread.sleep(pauseTime);
+                Thread.sleep(tickTime);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
