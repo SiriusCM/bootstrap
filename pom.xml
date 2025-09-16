@@ -33,13 +33,13 @@
         <spring-grpc.version>0.10.0</spring-grpc.version>
     </properties>
 
-    <!-- 1. 必须添加 JitPack 仓库，否则 Maven 只会去中央仓库找 -->
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
+<!--    &lt;!&ndash; 1. 必须添加 JitPack 仓库，否则 Maven 只会去中央仓库找 &ndash;&gt;-->
+<!--    <repositories>-->
+<!--        <repository>-->
+<!--            <id>jitpack.io</id>-->
+<!--            <url>https://jitpack.io</url>-->
+<!--        </repository>-->
+<!--    </repositories>-->
 
     <dependencies>
         <dependency>
@@ -82,6 +82,27 @@
             <groupId>org.springframework.grpc</groupId>
             <artifactId>spring-grpc-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- Spring 状态机核心依赖 -->
+        <dependency>
+            <groupId>org.springframework.statemachine</groupId>
+            <artifactId>spring-statemachine-core</artifactId>
+            <version>3.2.0</version> <!-- 最新稳定版 -->
+        </dependency>
+
+        <!-- Drools 核心规则引擎 -->
+        <dependency>
+            <groupId>org.drools</groupId>
+            <artifactId>drools-core</artifactId>
+            <version>8.44.0.Final</version> <!-- 最新稳定版 -->
+        </dependency>
+
+        <!-- Drools 规则编译器 -->
+        <dependency>
+            <groupId>org.drools</groupId>
+            <artifactId>drools-compiler</artifactId>
+            <version>8.44.0.Final</version>
         </dependency>
 
         <dependency>
