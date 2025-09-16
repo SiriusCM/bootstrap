@@ -1,17 +1,17 @@
-package com.sirius.bootstrap.core.frame;
+package com.sirius.bootstrap.core.tick;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class FrameThread extends Thread {
+public class TickThread extends Thread {
 
-    private final Map<String, Frame> frameMap = new HashMap<>();
+    private final Map<String, TickObject> frameMap = new HashMap<>();
 
     private boolean alive = true;
 
     private int pauseTime;
 
-    public FrameThread(String name, int pauseTime) {
+    public TickThread(String name, int pauseTime) {
         super(name);
         this.pauseTime = pauseTime;
         start();
@@ -24,8 +24,8 @@ public class FrameThread extends Thread {
         this.pauseTime = pauseTime;
     }
 
-    public synchronized void register(Frame frame) {
-        frameMap.put(frame.getId(), frame);
+    public synchronized void register(TickObject tickObject) {
+        frameMap.put(tickObject.getId(), tickObject);
     }
 
     public synchronized void unRegister(String id) {
@@ -36,9 +36,9 @@ public class FrameThread extends Thread {
     public void run() {
         while (alive || !frameMap.isEmpty()) {
             try {
-                for (Frame frame : frameMap.values()) {
+                for (TickObject tickObject : frameMap.values()) {
                     try {
-                        frame.nextFrame();
+                        tickObject.tick();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

@@ -1,9 +1,9 @@
 package com.sirius.bootstrap.core.sprite.scene;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.sirius.bootstrap.core.frame.FrameThread;
 import com.sirius.bootstrap.core.sprite.SpriteObject;
 import com.sirius.bootstrap.core.sprite.user.UserObject;
+import com.sirius.bootstrap.core.tick.TickThread;
+import com.sirius.bootstrap.msg.Msg;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,17 +23,23 @@ import java.util.Map;
 public class SceneObject extends SpriteObject {
     @Autowired
     @Qualifier("sceneThread")
-    private List<FrameThread> sceneThreadList;
+    private List<TickThread> sceneThreadList;
     @Autowired
-    protected List<ISceneCompoent> componentList;
+    protected List<ISceneModule> componentList;
 
     protected final Map<String, UserObject> userObjectMap = new HashMap<>();
 
     @PostConstruct
     public void postConstruct() {
         int index = (int) (sceneThreadList.size() * Math.random());
-        FrameThread thread = sceneThreadList.get(index);
+        TickThread thread = sceneThreadList.get(index);
         bindThread(thread);
+    }
+
+    @Override
+    public void start() {
+        super.start();
+        componentList.forEach(ISceneModule::start);
     }
 
     public void register(UserObject userObject) {
@@ -44,30 +50,17 @@ public class SceneObject extends SpriteObject {
         userObjectMap.remove(id);
     }
 
-    public void broadcastMsg(Object object) {
-        try {
-            String str = objectMapper.writeValueAsString(object);
-            userObjectMap.values().forEach(onlineObject -> {
-                onlineObject.replyMsg(str);
-            });
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+    public void broadcastMsg(Msg.Message message) {
+        userObjectMap.values().forEach(onlineObject -> onlineObject.replyMsg(message));
     }
 
     @Override
-    public void init() {
-        super.init();
-        componentList.forEach(ISceneCompoent::init);
-    }
-
-    @Override
-    public void nextFrame() {
-        super.nextFrame();
-        componentList.forEach(ISceneCompoent::nextFrame);
+    public void tick() {
+        super.tick();
+        componentList.forEach(ISceneModule::tick);
         for (UserObject userObject : userObjectMap.values()) {
             try {
-                userObject.nextFrame();
+                userObject.tick();
             } catch (Exception e) {
                 e.printStackTrace();
             }

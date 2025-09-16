@@ -3,8 +3,8 @@ package com.sirius.bootstrap.core.sprite;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sirius.bootstrap.core.event.Event;
 import com.sirius.bootstrap.core.event.EventListener;
-import com.sirius.bootstrap.core.frame.Frame;
 import com.sirius.bootstrap.core.ioc.AutoBean;
+import com.sirius.bootstrap.core.tick.TickObject;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ import java.util.function.Consumer;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public abstract class SpriteObject extends Frame {
+public abstract class SpriteObject extends TickObject {
     @Autowired
     protected ObjectMapper objectMapper;
 
@@ -27,13 +27,8 @@ public abstract class SpriteObject extends Frame {
 
     protected Map<Class<?>, List<Consumer<Event>>> eventConsumerMap = new HashMap<>();
 
-    public void publishEvent(Event event) {
-        eventConsumerMap.get(event.getClass()).forEach(consumer -> consumer.accept(event));
-    }
-
     @Override
-    public void init() {
-        super.init();
+    public void start() {
         poolMap.forEach((aClass, roleBean) -> {
             try {
                 for (Field field : aClass.getDeclaredFields()) {
@@ -66,5 +61,9 @@ public abstract class SpriteObject extends Frame {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    public void publishEvent(Event event) {
+        eventConsumerMap.get(event.getClass()).forEach(consumer -> consumer.accept(event));
     }
 }

@@ -1,7 +1,7 @@
 package com.sirius.bootstrap.core.rpc;
 
-import com.sirius.bootstrap.core.frame.Frame;
-import com.sirius.bootstrap.core.frame.FrameThread;
+import com.sirius.bootstrap.core.tick.TickObject;
+import com.sirius.bootstrap.core.tick.TickThread;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,15 +16,15 @@ import java.util.List;
 @Data
 @Scope("prototype")
 @Component
-public class RpcObject extends Frame {
+public class RpcObject extends TickObject {
     @Autowired
     @Qualifier("rpcThread")
-    private List<FrameThread> rpcThreadList;
+    private List<TickThread> rpcThreadList;
 
     @PostConstruct
     public void postConstruct() {
         int index = (int) (rpcThreadList.size() * Math.random());
-        FrameThread thread = rpcThreadList.get(index);
+        TickThread thread = rpcThreadList.get(index);
         bindThread(thread);
     }
 }

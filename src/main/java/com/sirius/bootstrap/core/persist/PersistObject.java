@@ -1,7 +1,7 @@
 package com.sirius.bootstrap.core.persist;
 
-import com.sirius.bootstrap.core.frame.Frame;
-import com.sirius.bootstrap.core.frame.FrameThread;
+import com.sirius.bootstrap.core.tick.TickObject;
+import com.sirius.bootstrap.core.tick.TickThread;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,15 +16,15 @@ import java.util.List;
 @Data
 @Scope("prototype")
 @Component
-public class PersistObject extends Frame {
+public class PersistObject extends TickObject {
     @Autowired
     @Qualifier("persistThread")
-    private List<FrameThread> persistThreadList;
+    private List<TickThread> persistThreadList;
 
     @PostConstruct
     public void postConstruct() {
         int index = (int) (persistThreadList.size() * Math.random());
-        FrameThread thread = persistThreadList.get(index);
+        TickThread thread = persistThreadList.get(index);
         bindThread(thread);
     }
 }

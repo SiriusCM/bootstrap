@@ -1,4 +1,4 @@
-package com.sirius.bootstrap.core.frame;
+package com.sirius.bootstrap.core.tick;
 
 import com.sirius.bootstrap.core.sprite.scene.SceneObject;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -11,27 +11,27 @@ import org.springframework.stereotype.Component;
 @Aspect
 @Scope("prototype")
 @Component
-public class FrameProxy {
+public class TickProxy {
 
-    private Frame frame;
+    private TickObject tickObject;
 
-    @Around("execution(* com.jdt.game.core.frame.Frame.bindThread(..))")
+    @Around("execution(* com.jdt.game.core.tick.TickObject.bindThread(..))")
     public void bindThread(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
-        frame = (Frame) proceedingJoinPoint.getTarget();
+        tickObject = (TickObject) proceedingJoinPoint.getTarget();
     }
 
     @Around("execution(* com.jdt.game.core.sprite.user.UserObject.enterScene(..))")
     public void enterScene(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
         proceedingJoinPoint.proceed();
-        frame = (SceneObject) proceedingJoinPoint.getArgs()[0];
+        tickObject = (SceneObject) proceedingJoinPoint.getArgs()[0];
     }
 
-    @Around("@annotation(com.jdt.game.core.frame.FrameQueue)")
+    @Around("@annotation(com.jdt.game.core.tick.TickQueue)")
     public void frameQueue(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
-        if (frame == null) {
+        if (tickObject == null) {
             proceedingJoinPoint.proceed();
         } else {
-            frame.offerQueue(s -> {
+            tickObject.offerQueue(s -> {
                 try {
                     proceedingJoinPoint.proceed();
                 } catch (Throwable e) {

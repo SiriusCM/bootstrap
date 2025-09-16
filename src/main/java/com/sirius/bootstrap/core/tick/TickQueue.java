@@ -1,9 +1,9 @@
-package com.sirius.bootstrap.core.frame;
+package com.sirius.bootstrap.core.tick;
 
 import java.lang.annotation.*;
 
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface FrameQueue {
+public @interface TickQueue {
 }

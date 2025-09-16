@@ -1,6 +1,6 @@
 package com.sirius.bootstrap.core.shutdown;
 
-import com.sirius.bootstrap.core.frame.FrameThread;
+import com.sirius.bootstrap.core.tick.TickThread;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import jakarta.annotation.PreDestroy;
@@ -22,16 +22,16 @@ public class ShutdownService {
     private EventLoopGroup workerGroup;
     @Autowired
     @Qualifier("globalThread")
-    private FrameThread globalThread;
+    private TickThread globalThread;
     @Autowired
     @Qualifier("rpcThread")
-    private List<FrameThread> rpcThreadList;
+    private List<TickThread> rpcThreadList;
     @Autowired
     @Qualifier("persistThread")
-    private List<FrameThread> persistThreadList;
+    private List<TickThread> persistThreadList;
     @Autowired
     @Qualifier("sceneThread")
-    private List<FrameThread> sceneThreadList;
+    private List<TickThread> sceneThreadList;
 
     @PreDestroy
     public void preDestroy() throws Exception {
@@ -40,19 +40,19 @@ public class ShutdownService {
         workerGroup.shutdownGracefully();
 
         globalThread.shutdown();
-        rpcThreadList.forEach(FrameThread::shutdown);
-        persistThreadList.forEach(FrameThread::shutdown);
-        sceneThreadList.forEach(FrameThread::shutdown);
+        rpcThreadList.forEach(TickThread::shutdown);
+        persistThreadList.forEach(TickThread::shutdown);
+        sceneThreadList.forEach(TickThread::shutdown);
 
         globalThread.join();
-        for (FrameThread frameThread : rpcThreadList) {
-            frameThread.join();
+        for (TickThread tickThread : rpcThreadList) {
+            tickThread.join();
         }
-        for (FrameThread frameThread : persistThreadList) {
-            frameThread.join();
+        for (TickThread tickThread : persistThreadList) {
+            tickThread.join();
         }
-        for (FrameThread frameThread : sceneThreadList) {
-            frameThread.join();
+        for (TickThread tickThread : sceneThreadList) {
+            tickThread.join();
         }
     }
 }

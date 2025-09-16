@@ -1,30 +1,33 @@
 package com.sirius.bootstrap.core.global;
 
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.sirius.bootstrap.core.frame.Frame;
-import com.sirius.bootstrap.core.frame.FrameThread;
 import com.sirius.bootstrap.core.io.MsgHandler;
 import com.sirius.bootstrap.core.sprite.user.UserObject;
-import io.netty.channel.ChannelHandlerContext;
+import com.sirius.bootstrap.core.tick.TickObject;
+import com.sirius.bootstrap.core.tick.TickThread;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.stereotype.Service;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.stream.Collectors;
+import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 
-public abstract class GlobalService extends Frame {
+@Service
+public class GlobalService extends TickObject {
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
     @Autowired
     @Qualifier("globalThread")
-    protected FrameThread globalThread;
+    protected TickThread globalThread;
     @Autowired
     protected Map<String, UserObject> userObjectMap;
 
-    protected Queue<LoginInfo> loginQueue = new LinkedList<>();
+    protected Queue<MsgHandler> loginQueue = new LinkedBlockingQueue<>();
 
     @PostConstruct
     public void postConstruct() {
@@ -32,19 +35,30 @@ public abstract class GlobalService extends Frame {
     }
 
     @Override
-    public void nextFrame() {
+    public void tick() {
+        super.tick();
         loginHandler();
         logoutHandler();
     }
 
-    public abstract void loginQueue(MsgHandler msgHandler, ChannelHandlerContext ctx, JsonNode jsonNode);
+    public void loginQueue(MsgHandler msgHandler) {
+        loginQueue.offer(msgHandler);
+    }
 
-    public abstract void loginHandler();
+    public void loginHandler() {
+        while (!loginQueue.isEmpty()) {
+            MsgHandler msgHandler = loginQueue.poll();
+            UserObject userObject = applicationContext.getBean(UserObject.class);
+            msgHandler.setUserObject(userObject);
+            userObject.login(UUID.randomUUID().toString(), msgHandler.getCtx());
+            userObject.start();
+        }
+    }
 
     public void logoutHandler() {
         long keepLiveTime = System.currentTimeMillis() - 60 * 1000;
         List<UserObject> list = userObjectMap.values().stream().filter(
-                userObject -> userObject.isOffline(keepLiveTime)).collect(Collectors.toList());
+                userObject -> userObject.isOffline(keepLiveTime)).toList();
         for (UserObject userObject : list) {
             userObject.leaveScene();
             String userId = userObject.getId();

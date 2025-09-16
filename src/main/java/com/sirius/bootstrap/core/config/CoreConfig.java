@@ -1,7 +1,7 @@
 package com.sirius.bootstrap.core.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sirius.bootstrap.core.frame.FrameThread;
+import com.sirius.bootstrap.core.tick.TickThread;
 import com.sirius.bootstrap.core.io.MsgHandler;
 import com.sirius.bootstrap.core.sprite.user.UserObject;
 import com.sirius.bootstrap.msg.Msg;
@@ -121,37 +121,37 @@ public class CoreConfig {
     }
 
     @Bean("globalThread")
-    public FrameThread globalThread() {
-        return new FrameThread("globalThread", cpuPauseTime);
+    public TickThread globalThread() {
+        return new TickThread("globalThread", cpuPauseTime);
     }
 
     @Bean("rpcThread")
-    public List<FrameThread> rpcThread() {
-        List<FrameThread> list = new ArrayList<>();
+    public List<TickThread> rpcThread() {
+        List<TickThread> list = new ArrayList<>();
         int processors = Runtime.getRuntime().availableProcessors() * 2;
         for (int i = 0; i < processors; i++) {
-            FrameThread thread = new FrameThread("rpcThread-" + i, ioPauseTime);
+            TickThread thread = new TickThread("rpcThread-" + i, ioPauseTime);
             list.add(thread);
         }
         return list;
     }
 
     @Bean("persistThread")
-    public List<FrameThread> persistThread() {
-        List<FrameThread> list = new ArrayList<>();
+    public List<TickThread> persistThread() {
+        List<TickThread> list = new ArrayList<>();
         for (int i = 0; i < poolMaxNum; i++) {
-            FrameThread thread = new FrameThread("persistThread-" + i, ioPauseTime);
+            TickThread thread = new TickThread("persistThread-" + i, ioPauseTime);
             list.add(thread);
         }
         return list;
     }
 
     @Bean("sceneThread")
-    public List<FrameThread> sceneThread() {
-        List<FrameThread> list = new ArrayList<>();
+    public List<TickThread> sceneThread() {
+        List<TickThread> list = new ArrayList<>();
         int processors = Runtime.getRuntime().availableProcessors() * 2;
         for (int i = 0; i < processors; i++) {
-            FrameThread thread = new FrameThread("sceneThread-" + i, cpuPauseTime);
+            TickThread thread = new TickThread("sceneThread-" + i, cpuPauseTime);
             list.add(thread);
         }
         return list;
