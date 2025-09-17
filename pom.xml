@@ -106,6 +106,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.drools</groupId>
+            <artifactId>drools-mvel</artifactId>
+            <version>8.44.0.Final</version> <!-- 示例版本，需替换为实际使用的版本 -->
+        </dependency>
+
+        <dependency>
             <groupId>com.github.silencesu</groupId>
             <artifactId>behavior3java</artifactId>
             <version>1.1.0</version>

@@ -38,7 +38,7 @@ public class BattleService {
      * 战斗状态机示例
      */
     @Bean
-    public CommandLineRunner demo(BattleService battleService) {
+    public CommandLineRunner demoBattle(BattleService battleService) {
         return args -> {
             System.out.println("=== 开始游戏状态机演示 ===");
 

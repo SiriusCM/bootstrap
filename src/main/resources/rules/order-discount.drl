@@ -1,0 +1,64 @@
+package com.sirius.bootstrap.module.order;
+
+// 1. 添加 Date 类的导入（关键！）
+import java.util.Date;
+import java.util.Calendar;
+import java.math.BigDecimal;
+import com.sirius.bootstrap.module.order.Order; // 确保 Order 类路径正确
+
+// 订单折扣规则集
+
+// 规则1：VIP客户订单金额大于1000元，享受15%折扣
+rule "VIP customer with amount > 1000"
+    salience 20  // 确保最后执行
+    when
+        $order: Order(customerLevel == "VIP", amount.compareTo(new BigDecimal("1000")) > 0)
+    then
+        System.out.println("应用规则：VIP客户订单金额大于1000元，享受15%折扣");
+        BigDecimal discount = $order.getAmount().multiply(new BigDecimal("0.15"));
+        $order.setDiscount(discount);
+end
+
+// 规则2：VIP客户订单金额小于等于1000元，享受10%折扣
+rule "VIP customer with amount <= 1000"
+    salience 15  // 确保最后执行
+    when
+        $order: Order(customerLevel == "VIP", amount.compareTo(new BigDecimal("1000")) <= 0)
+    then
+        System.out.println("应用规则：VIP客户订单金额小于等于1000元，享受10%折扣");
+        BigDecimal discount = $order.getAmount().multiply(new BigDecimal("0.10"));
+        $order.setDiscount(discount);
+end
+
+// 规则3：普通客户订单金额大于2000元，享受8%折扣
+rule "Normal customer with amount > 2000"
+    salience 10  // 确保最后执行
+    when
+        $order: Order(customerLevel == "NORMAL", amount.compareTo(new BigDecimal("2000")) > 0)
+    then
+        System.out.println("应用规则：普通客户订单金额大于2000元，享受8%折扣");
+        BigDecimal discount = $order.getAmount().multiply(new BigDecimal("0.08"));
+        $order.setDiscount(discount);
+end
+
+// 规则4：普通客户在节假日下单，享受5%折扣
+rule "Normal customer on holiday"
+    salience 5  // 确保最后执行
+    when
+        $order: Order(customerLevel == "NORMAL")
+        // 检查是否为节假日（这里简化处理，仅判断是否为圣诞节）
+        eval(isHoliday($order.getOrderDate()))
+    then
+        System.out.println("应用规则：普通客户节假日下单，享受5%折扣");
+        BigDecimal discount = $order.getAmount().multiply(new BigDecimal("0.05"));
+        $order.setDiscount(discount);
+end
+
+// 辅助函数：判断是否为节假日
+function boolean isHoliday(Date date) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTime(date);
+    // 简单判断：12月25日为圣诞节
+    return calendar.get(Calendar.MONTH) == Calendar.DECEMBER
+        && calendar.get(Calendar.DATE) == 25;
+}
