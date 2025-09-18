@@ -88,14 +88,14 @@
         <dependency>
             <groupId>org.springframework.statemachine</groupId>
             <artifactId>spring-statemachine-core</artifactId>
-            <version>3.2.0</version> <!-- 最新稳定版 -->
+            <version>3.2.0</version>
         </dependency>
 
         <!-- Drools 核心规则引擎 -->
         <dependency>
             <groupId>org.drools</groupId>
             <artifactId>drools-core</artifactId>
-            <version>8.44.0.Final</version> <!-- 最新稳定版 -->
+            <version>8.44.0.Final</version>
         </dependency>
 
         <!-- Drools 规则编译器 -->
@@ -105,10 +105,11 @@
             <version>8.44.0.Final</version>
         </dependency>
 
+        <!-- Drools 集成 MVEL 表达式语言支持 -->
         <dependency>
             <groupId>org.drools</groupId>
             <artifactId>drools-mvel</artifactId>
-            <version>8.44.0.Final</version> <!-- 示例版本，需替换为实际使用的版本 -->
+            <version>8.44.0.Final</version>
         </dependency>
 
         <dependency>
