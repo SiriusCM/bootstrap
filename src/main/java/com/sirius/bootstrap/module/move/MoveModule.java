@@ -2,17 +2,15 @@ package com.sirius.bootstrap.module.move;
 
 import com.sirius.bootstrap.core.io.MsgListener;
 import com.sirius.bootstrap.core.ioc.AutoBean;
+import com.sirius.bootstrap.core.ioc.Module;
 import com.sirius.bootstrap.core.sprite.scene.SceneObject;
 import com.sirius.bootstrap.core.sprite.user.IUserModule;
 import com.sirius.bootstrap.core.sprite.user.UserObject;
 import com.sirius.bootstrap.msg.Msg;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 
 @Slf4j
-@Scope("prototype")
-@Component
+@Module
 public class MoveModule implements IUserModule {
     @AutoBean
     private UserObject userObject;

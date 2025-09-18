@@ -15,13 +15,8 @@ import java.util.Date;
  */
 @Service
 public class OrderService {
-
-    private final KieSession kieSession;
-
     @Autowired
-    public OrderService(KieSession kieSession) {
-        this.kieSession = kieSession;
-    }
+    private KieSession kieSession;
 
     /**
      * 计算订单折扣
