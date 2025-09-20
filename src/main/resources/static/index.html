@@ -99,9 +99,9 @@
     <!-- 游戏状态和控制区 -->
     <div class="w-full flex flex-wrap justify-between items-center gap-4 bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md mb-6">
         <div class="flex items-center gap-3">
-            <div id="current-player" class="w-6 h-6 rounded-full bg-stone-black shadow-md"></div>
+            <div id="current-battlePlayer" class="w-6 h-6 rounded-full bg-stone-black shadow-md"></div>
             <p class="text-base md:text-lg font-medium">
-                <span id="player-text">黑棋</span> 回合
+                <span id="battlePlayer-text">黑棋</span> 回合
             </p>
         </div>
 
@@ -205,14 +205,14 @@
                     },
                     CSPlaceStone: {
                         fields: {
-                            player: { type: 'int32', id: 1 },
+                            battlePlayer: { type: 'int32', id: 1 },
                             row: { type: 'int32', id: 2 },
                             col: { type: 'int32', id: 3 }
                         }
                     },
                     SCPlaceStone: {
                         fields: {
-                            player: { type: 'int32', id: 1 },
+                            battlePlayer: { type: 'int32', id: 1 },
                             row: { type: 'int32', id: 2 },
                             col: { type: 'int32', id: 3 },
                             valid: { type: 'bool', id: 4 }
@@ -245,7 +245,7 @@
         }
 
         // 编码落子消息
-        encodePlaceStoneMessage(player, row, col) {
+        encodePlaceStoneMessage(battlePlayer, row, col) {
             if (!this.Message || !this.CSPlaceStone) {
                 logMessage("Protobuf未初始化完成，无法编码消息");
                 return null;
@@ -253,11 +253,11 @@
 
             try {
                 // 转换玩家标识: black->1, white->2
-                const playerCode = player === 'black' ? 1 : 2;
+                const playerCode = battlePlayer === 'black' ? 1 : 2;
 
                 // 创建CSPlaceStone消息
                 const csPlaceStone = this.CSPlaceStone.create({
-                    player: playerCode,
+                    battlePlayer: playerCode,
                     row: row,
                     col: col
                 });
@@ -337,8 +337,8 @@
 
     // DOM元素
     const boardElement = document.getElementById('board');
-    const currentPlayerElement = document.getElementById('current-player');
-    const playerTextElement = document.getElementById('player-text');
+    const currentPlayerElement = document.getElementById('current-battlePlayer');
+    const playerTextElement = document.getElementById('battlePlayer-text');
     const gameStatusElement = document.getElementById('game-status');
     const restartButton = document.getElementById('restart-btn');
     const newGameButton = document.getElementById('new-game-btn');
@@ -531,7 +531,7 @@
             [1, -1]  // 反对角线方向
         ];
 
-        const player = gameBoard[row][col];
+        const battlePlayer = gameBoard[row][col];
 
         // 检查每个方向
         for (const [dx, dy] of directions) {
@@ -545,7 +545,7 @@
                 if (
                     newRow >= 0 && newRow < BOARD_SIZE &&
                     newCol >= 0 && newCol < BOARD_SIZE &&
-                    gameBoard[newRow][newCol] === player
+                    gameBoard[newRow][newCol] === battlePlayer
                 ) {
                     count++;
                 } else {
@@ -561,7 +561,7 @@
                 if (
                     newRow >= 0 && newRow < BOARD_SIZE &&
                     newCol >= 0 && newCol < BOARD_SIZE &&
-                    gameBoard[newRow][newCol] === player
+                    gameBoard[newRow][newCol] === battlePlayer
                 ) {
                     count++;
                 } else {
@@ -792,7 +792,7 @@
                 logMessage(`服务器发送的骰子结果: ${message.scRoll.num}`);
                 break;
             case message.scPlaceStone !== undefined:
-                logMessage(`服务器确认落子: 玩家${message.scPlaceStone.player}, 位置(${message.scPlaceStone.row},${message.scPlaceStone.col}), 有效:${message.scPlaceStone.valid}`);
+                logMessage(`服务器确认落子: 玩家${message.scPlaceStone.battlePlayer}, 位置(${message.scPlaceStone.row},${message.scPlaceStone.col}), 有效:${message.scPlaceStone.valid}`);
                 break;
             case message.scGameEnd !== undefined:
                 const winnerText = message.scGameEnd.winner === 1 ? '黑棋' :
