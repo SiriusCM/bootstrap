@@ -29,23 +29,8 @@ public class MoveModule implements IUserModule {
 
     @MsgListener(msgIdCase = Msg.Message.MsgIdCase.MOVEMESSAGE)
     public void move(Msg.Message reqMsg) {
-        Msg.MoveMessage moveMessage = reqMsg.getMoveMessage();
-
-        Msg.MoveMessage.Builder builder = Msg.MoveMessage.newBuilder();
-        builder.setPlayerId(moveMessage.getPlayerId());
-        builder.setPosX(moveMessage.getPosX());
-        builder.setPosY(moveMessage.getPosY());
-        builder.setPosZ(moveMessage.getPosZ());
-        builder.setRotX(moveMessage.getRotX());
-        builder.setRotY(moveMessage.getRotY());
-        builder.setRotZ(moveMessage.getRotZ());
-
-        Msg.Message.Builder resMsg = Msg.Message.newBuilder();
-        resMsg.setMoveMessage(builder);
-        userObject.replyMsg(resMsg.build());
-        log.info(resMsg.toString());
-
+        log.info(reqMsg.toString());
         SceneObject sceneObject = userObject.getSceneObject();
-        sceneObject.broadcastMsg(resMsg.build());
+        sceneObject.broadcastMsg(reqMsg);
     }
 }
